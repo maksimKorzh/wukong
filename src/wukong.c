@@ -28,6 +28,7 @@
 // FEN dedug positions
 #define start_position "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
 #define tricky_position "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "
+#define killer_position "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1"
 
 // piece encoding
 enum pieces {e, P, N, B, R, Q, K, p, n, b, r, q, k, o};
@@ -1359,21 +1360,95 @@ static inline int evaluate_position()
 
 \***********************************************/
 
+// most valuable victim & less valuable attacker
+
+/*
+                          
+    (Victims) Pawn Knight Bishop   Rook  Queen   King
+  (Attackers)
+        Pawn   105    205    305    405    505    605
+      Knight   104    204    304    404    504    604
+      Bishop   103    203    303    403    503    603
+        Rook   102    202    302    402    502    602
+       Queen   101    201    301    401    501    601
+        King   100    200    300    400    500    600
+
+*/
+
+static int mvv_lva[13][13] = {
+	0,   0,   0,   0,   0,   0,   0,  0,   0,   0,   0,   0,   0,
+	0, 105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605,
+	0, 104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604,
+	0, 103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603,
+	0, 102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602,
+	0, 101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601,
+	0, 100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600,
+
+	0, 105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605,
+	0, 104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604,
+	0, 103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603,
+	0, 102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602,
+	0, 101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601,
+	0, 100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600
+};
+
+// killer moves [id][ply]
+int killer_moves[2][64];
+
+// history moves [piece][square]
+int history_moves[13][128];
+
 // init best move
 int best_move = 0;
 
 // half move
 int ply = 0;
 
+// score move for move ordering
+static inline int score_move(int move)
+{
+    // init current move score
+    int score;
+    
+    // score MVV LVA (scores 0 for quiete moves)
+    score = mvv_lva[board[get_move_source(move)]][board[get_move_target(move)]];         
+
+    // on capture
+    if (get_move_capture(move))
+    {
+        // add 10000 to current score
+        score += 10000;
+    }
+    
+    // on quiete move
+    else {
+        // on 1st killer move
+        if (killer_moves[0][ply] == move)
+            // score 9000
+            score = 9000;
+        
+        // on 2nd killer move
+        else if (killer_moves[1][ply] == move)
+            // score 8000
+            score = 8000;
+    }
+    
+    // return move score
+    return score;
+}
+
 // quiescence search
 static inline int quiescence_search(int alpha, int beta, int depth)
 {
+    // update nodes count
+    nodes++;
+    
     // evaluate position
     int eval = evaluate_position();
     
     //  fail hard beta-cutoff
     if (eval >= beta)
-         return beta;
+        return beta;
     
     // return if reached max depth
     if (ply > 6)
@@ -1390,8 +1465,8 @@ static inline int quiescence_search(int alpha, int beta, int depth)
     generate_moves(move_list);
     
     // loop over the generated moves
-    for (int move_count = 0; move_count < move_list->count; move_count++)
-    {
+    for (int count = 0; count < move_list->count; count++)
+    {   
         // copy board state
         copy_board();
         
@@ -1399,7 +1474,7 @@ static inline int quiescence_search(int alpha, int beta, int depth)
         ply++;
         
         // make only legal moves
-        if (!make_move(move_list->moves[move_count], only_captures))
+        if (!make_move(move_list->moves[count], only_captures))
         {
             // decrement ply
             ply--;
@@ -1430,9 +1505,12 @@ static inline int quiescence_search(int alpha, int beta, int depth)
     return alpha;
 }
 
-// search position
-static inline int search_position(int alpha, int beta, int depth)
+// negamax search
+static inline int negamax_search(int alpha, int beta, int depth)
 {
+    // update nodes count
+    nodes++;
+    
     // legal moves
     int legal_moves = 0;
     
@@ -1454,8 +1532,33 @@ static inline int search_position(int alpha, int beta, int depth)
     generate_moves(move_list);
     
     // loop over the generated moves
-    for (int move_count = 0; move_count < move_list->count; move_count++)
+    for (int count = 0; count < move_list->count; count++)
     {
+        /* move ordering */
+        
+        // define current/next and move/score
+        int current_move, next_move, current_score, next_score;
+        
+        // loop over next move
+        for (int next = count + 1; next < move_list->count; next++)                                                   
+        {
+            // init current move/score                                                                                            
+            current_move = move_list->moves[count];                                                                                                                                  
+            current_score = score_move(current_move);
+            
+            // init next move/score
+            next_move = move_list->moves[next];                                                                       
+            next_score = score_move(next_move);
+            
+            // sort descending
+            if (current_score < next_score)                                                                           
+            {                                                                                                         
+                int temp_move = current_move;                                                                         
+                move_list->moves[count] = next_move;                                                                  
+                move_list->moves[next] = temp_move;                                                                  
+            }
+        }
+        
         // copy board state
         copy_board();
         
@@ -1463,7 +1566,7 @@ static inline int search_position(int alpha, int beta, int depth)
         ply++;
         
         // make only legal moves
-        if (!make_move(move_list->moves[move_count], all_moves))
+        if (!make_move(move_list->moves[count], all_moves))
         {
             // decrement ply
             ply--;
@@ -1476,7 +1579,7 @@ static inline int search_position(int alpha, int beta, int depth)
         legal_moves++;
         
         // recursive call
-        int score = -search_position(-beta, -alpha, depth - 1);
+        int score = -negamax_search(-beta, -alpha, depth - 1);
         
         // restore board state
         take_back();
@@ -1486,8 +1589,13 @@ static inline int search_position(int alpha, int beta, int depth)
 
         //  fail hard beta-cutoff
         if (score >= beta)
+        {
+            // update killer moves
+            killer_moves[1][ply] = killer_moves[0][ply];
+            killer_moves[0][ply] = move_list->moves[count];
+            
             return beta;
-        
+        }
         // alpha acts like max in MiniMax
         if (score > alpha)
         {
@@ -1496,8 +1604,8 @@ static inline int search_position(int alpha, int beta, int depth)
             
             // store current best move
             if(!ply)
-                best_so_far = move_list->moves[move_count];
-        }
+                best_so_far = move_list->moves[count];
+        }        
     }
     
     // if no legal moves
@@ -1518,6 +1626,22 @@ static inline int search_position(int alpha, int beta, int depth)
     
     // return alpha score
     return alpha;
+}
+
+// search position
+int search_position(int depth)
+{
+    // init nodes count
+    nodes = 0;
+    
+    // search position with current depth 3
+	int score = negamax_search(-50000, 50000, depth);
+    
+    // output best move
+    printf("info score cp %d depth %d nodes %ld\n", score, depth, nodes);
+    printf("bestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
+                                square_to_coords[get_move_target(best_move)],
+                                 promoted_pieces[get_move_piece(best_move)]);
 }
 
 
@@ -1745,30 +1869,14 @@ void uci()
 			// parse depth
 			int depth = *go - '0';
 			
-			// serch position with carrent depth
-			int score = search_position(-50000, 50000, depth);
-	        
-	        // output best move
-            if (best_move)
-	            printf("info score cp %d depth %d\n", score, depth);
-	            printf("bestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
-                                            square_to_coords[get_move_target(best_move)],
-                                              promoted_pieces[get_move_piece(best_move)]);
+			// search fixed depth
+			search_position(depth);
 		}
 		
 		// use fixed depth 3 for all the other modes but fixed depth, e.g. in blitz mode
 		else if (!strncmp(line, "go", 2))
-		{			
-			// search position with current depth 3
-			int score = search_position(-50000, 50000, 5);
-	        
-	        // output best move
-            if (best_move)
-	            printf("info score cp %d depth 5\n", score);
-	            printf("bestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
-                                            square_to_coords[get_move_target(best_move)],
-                                              promoted_pieces[get_move_piece(best_move)]);
-		}
+			// search 5 ply
+			search_position(5);
 		
 		// parse "quit" command
 		else if(!strncmp(line, "quit", 4))
@@ -1787,7 +1895,14 @@ void uci()
 int main()
 {
     // run engine in UCI mode
-    uci();
+    //uci();
+    parse_fen(killer_position);
+    print_board();
+    /*moves move_list[1];
+    generate_moves(move_list);
+    sort_moves_test(move_list);*/
+    
+    search_position(5);
     
     return 0;
 }
