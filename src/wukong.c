@@ -191,7 +191,7 @@ const int bishop_score[128] =
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
      0,   0,  20,   0,   0,  20,   0,   0,    o, o, o, o, o, o, o, o,
-     0,   0,   0,  10,  10,   0,   0,   0,    o, o, o, o, o, o, o, o,
+     0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
      0,   0, -10,   0,   0, -10,   0,   0,    o, o, o, o, o, o, o, o
 
@@ -1398,6 +1398,10 @@ int killer_moves[2][64];
 // history moves [piece][square]
 int history_moves[13][128];
 
+// PV moves
+int pv_table[64][64];
+int pv_length[64];
+
 // init best move
 int best_move = 0;
 
@@ -1431,6 +1435,17 @@ static inline int score_move(int move)
         else if (killer_moves[1][ply] == move)
             // score 8000
             score = 8000;
+        
+        // PV move
+        else if (pv_table[0][ply] == move)
+            // score 20000 ( search it first )
+            score = 20000;
+        
+        // on history move ( previous alpha's (best score) depth  )
+        else
+            // score with history depth
+            score = history_moves[board[get_move_source(move)]][get_move_target(move)];
+            
     }
     
     // return move score
@@ -1449,10 +1464,6 @@ static inline int quiescence_search(int alpha, int beta, int depth)
     //  fail hard beta-cutoff
     if (eval >= beta)
         return beta;
-    
-    // return if reached max depth
-    if (ply > 6)
-        return evaluate_position();
 
     // alpha acts like max in MiniMax
     if (eval > alpha)
@@ -1466,7 +1477,32 @@ static inline int quiescence_search(int alpha, int beta, int depth)
     
     // loop over the generated moves
     for (int count = 0; count < move_list->count; count++)
-    {   
+    {
+        /* move ordering */
+        
+        // define current/next and move/score
+        int current_move, next_move, current_score, next_score;
+        
+        // loop over next move
+        for (int next = count + 1; next < move_list->count; next++)                                                   
+        {
+            // init current move/score                                                                                            
+            current_move = move_list->moves[count];                                                                                                                                  
+            current_score = score_move(current_move);
+            
+            // init next move/score
+            next_move = move_list->moves[next];                                                                       
+            next_score = score_move(next_move);
+            
+            // sort descending
+            if (current_score < next_score)                                                                           
+            {                                                                                                         
+                int temp_move = current_move;                                                                         
+                move_list->moves[count] = next_move;                                                                  
+                move_list->moves[next] = temp_move;                                                                  
+            }
+        }
+        
         // copy board state
         copy_board();
         
@@ -1519,6 +1555,9 @@ static inline int negamax_search(int alpha, int beta, int depth)
     
     // old alpha
     int old_alpha = alpha;
+    
+    //
+    pv_length[ply] = ply;
 
     // escape condition
     if  (!depth)
@@ -1533,7 +1572,7 @@ static inline int negamax_search(int alpha, int beta, int depth)
     
     // loop over the generated moves
     for (int count = 0; count < move_list->count; count++)
-    {
+    {   
         /* move ordering */
         
         // define current/next and move/score
@@ -1596,16 +1635,28 @@ static inline int negamax_search(int alpha, int beta, int depth)
             
             return beta;
         }
+        
         // alpha acts like max in MiniMax
         if (score > alpha)
         {
+            // update history score
+            history_moves[board[get_move_source(move_list->moves[count])]][get_move_target(move_list->moves[count])] += depth;
+
             // set alpha score
             alpha = score;
+            
+            // store PV move
+			pv_table[ply][ply] = move_list->moves[count];
+			
+			for (int i = ply + 1; i < pv_length[ply + 1]; i++)
+				pv_table[ply][i] = pv_table[ply + 1][i];
+	
+			pv_length[ply] = pv_length[ply + 1];
             
             // store current best move
             if(!ply)
                 best_so_far = move_list->moves[count];
-        }        
+        }      
     }
     
     // if no legal moves
@@ -1634,12 +1685,25 @@ int search_position(int depth)
     // init nodes count
     nodes = 0;
     
+    // best score
+    int score;
+    
     // search position with current depth 3
-	int score = negamax_search(-50000, 50000, depth);
+	score = negamax_search(-50000, 50000, depth);
     
     // output best move
-    printf("info score cp %d depth %d nodes %ld\n", score, depth, nodes);
-    printf("bestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
+    printf("info score cp %d depth %d nodes %ld pv ", score, depth, nodes);
+    
+    // print PV line
+    for (int i = 0; i < pv_length[0]; i++)
+    {
+        printf("%s%s%c ", square_to_coords[get_move_source(pv_table[0][i])],
+                            square_to_coords[get_move_target(pv_table[0][i])],
+                             promoted_pieces[get_move_piece(pv_table[0][i])]);
+    }
+	
+	// print best move
+    printf("\nbestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
                                 square_to_coords[get_move_target(best_move)],
                                  promoted_pieces[get_move_piece(best_move)]);
 }
@@ -1895,14 +1959,15 @@ void uci()
 int main()
 {
     // run engine in UCI mode
-    //uci();
-    parse_fen(killer_position);
-    print_board();
+    uci();
+    
+    //parse_fen(start_position);
+    //print_board();
     /*moves move_list[1];
     generate_moves(move_list);
     sort_moves_test(move_list);*/
     
-    search_position(5);
+    //search_position(5);
     
     return 0;
 }
