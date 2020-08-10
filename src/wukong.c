@@ -173,14 +173,14 @@ const int pawn_score[128] =
 // knight positional score
 const int knight_score[128] = 
 {
-     0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
-     0,   0,   0,  10,  10,   0,   0,   0,    o, o, o, o, o, o, o, o,
+    -5,   0,   0,   0,   0,   0,   0,  -5,    o, o, o, o, o, o, o, o,
+    -5,   0,   0,  10,  10,   0,   0,  -5,    o, o, o, o, o, o, o, o,
     -5,   5,  20,  20,  20,  20,   5,  -5,    o, o, o, o, o, o, o, o,
     -5,  10,  20,  30,  30,  20,  10,  -5,    o, o, o, o, o, o, o, o,
     -5,  10,  20,  30,  30,  20,  10,  -5,    o, o, o, o, o, o, o, o,
     -5,   5,  20,  10,  10,  25,   5,  -5,    o, o, o, o, o, o, o, o,
-     0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
-     0, -10,   0,   0,   0,   0, -10,   0,    o, o, o, o, o, o, o, o
+    -5,   0,   0,   0,   0,   0,   0,  -5,    o, o, o, o, o, o, o, o,
+    -5, -10,   0,   0,   0,   0, -10,  -5,    o, o, o, o, o, o, o, o
 };
 
 // bishop positional score
@@ -188,9 +188,9 @@ const int bishop_score[128] =
 {
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
-     0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
-     0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
-     0,   0,  20,   0,   0,  20,   0,   0,    o, o, o, o, o, o, o, o,
+     0,   0,   0,  10,  10,   0,   0,   0,    o, o, o, o, o, o, o, o,
+     0,   0,  10,  20,  20,  10,   0,   0,    o, o, o, o, o, o, o, o,
+     0,   0,  10,  20,  20,  10,   0,   0,    o, o, o, o, o, o, o, o,
      0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
      0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
      0,   0, -10,   0,   0, -10,   0,   0,    o, o, o, o, o, o, o, o
@@ -1556,14 +1556,21 @@ static inline int negamax_search(int alpha, int beta, int depth)
     // old alpha
     int old_alpha = alpha;
     
-    //
+    // PV length
     pv_length[ply] = ply;
 
     // escape condition
     if  (!depth)
         // search for calm position before evaluation
         return quiescence_search(alpha, beta, depth);
-
+    
+    // is king in check?
+    int in_check = is_square_attacked(king_square[side], side ^ 1);
+    
+    // increase depth if king is in check
+    if (in_check)
+        depth++;
+    
     // create move list variable
     moves move_list[1];
     
@@ -1663,7 +1670,7 @@ static inline int negamax_search(int alpha, int beta, int depth)
     if (!legal_moves)
     {
         // check mate detection
-        if (is_square_attacked(king_square[side], side ^ 1))
+        if (in_check)
             return -49000 + ply;
         
         // stalemate detection
@@ -1707,6 +1714,22 @@ int search_position(int depth)
         
         printf("\n");
     }
+	
+	/* search position with current depth 3
+	    score = negamax_search(-50000, 50000, depth);
+        
+        // output best move
+        printf("info score cp %d depth %d nodes %ld pv ", score, depth, nodes);
+        
+        // print PV line
+        for (int i = 0; i < pv_length[0]; i++)
+        {
+            printf("%s%s%c ", square_to_coords[get_move_source(pv_table[0][i])],
+                                square_to_coords[get_move_target(pv_table[0][i])],
+                                 promoted_pieces[get_move_piece(pv_table[0][i])]);
+        }
+        
+        printf("\n");*/
 	
 	// print best move
     printf("\nbestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
