@@ -178,7 +178,7 @@ const int knight_score[128] =
     -5,   5,  20,  20,  20,  20,   5,  -5,    o, o, o, o, o, o, o, o,
     -5,  10,  20,  30,  30,  20,  10,  -5,    o, o, o, o, o, o, o, o,
     -5,  10,  20,  30,  30,  20,  10,  -5,    o, o, o, o, o, o, o, o,
-    -5,   5,  20,  10,  10,  20,   5,  -5,    o, o, o, o, o, o, o, o,
+    -5,   5,  20,  10,  10,  25,   5,  -5,    o, o, o, o, o, o, o, o,
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
      0, -10,   0,   0,   0,   0, -10,   0,    o, o, o, o, o, o, o, o
 };
@@ -192,7 +192,7 @@ const int bishop_score[128] =
      0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
      0,   0,  20,   0,   0,  20,   0,   0,    o, o, o, o, o, o, o, o,
      0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
-     0,   0,   0,   0,   0,   0,   0,   0,    o, o, o, o, o, o, o, o,
+     0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
      0,   0, -10,   0,   0, -10,   0,   0,    o, o, o, o, o, o, o, o
 
 };
@@ -221,7 +221,7 @@ const int king_score[128] =
      0,   5,  10,  20,  20,  10,   5,   0,    o, o, o, o, o, o, o, o,
      0,   0,   5,  10,  10,   5,   0,   0,    o, o, o, o, o, o, o, o,
      0,   5,   5,  -5,  -5,   0,   5,   0,    o, o, o, o, o, o, o, o,
-     0,   0,   5,   0, -10,   0,  10,   0,    o, o, o, o, o, o, o, o
+     0,   0,   5,   0, -15,   0,  10,   0,    o, o, o, o, o, o, o, o
 
 };
 
@@ -1688,18 +1688,24 @@ int search_position(int depth)
     // best score
     int score;
     
-    // search position with current depth 3
-	score = negamax_search(-50000, 50000, depth);
-    
-    // output best move
-    printf("info score cp %d depth %d nodes %ld pv ", score, depth, nodes);
-    
-    // print PV line
-    for (int i = 0; i < pv_length[0]; i++)
-    {
-        printf("%s%s%c ", square_to_coords[get_move_source(pv_table[0][i])],
-                            square_to_coords[get_move_target(pv_table[0][i])],
-                             promoted_pieces[get_move_piece(pv_table[0][i])]);
+    // iterative deepening
+    for (int current_depth = 1; current_depth <= depth; current_depth++)
+    {    
+        // search position with current depth 3
+	    score = negamax_search(-50000, 50000, current_depth);
+        
+        // output best move
+        printf("info score cp %d depth %d nodes %ld pv ", score, current_depth, nodes);
+        
+        // print PV line
+        for (int i = 0; i < pv_length[0]; i++)
+        {
+            printf("%s%s%c ", square_to_coords[get_move_source(pv_table[0][i])],
+                                square_to_coords[get_move_target(pv_table[0][i])],
+                                 promoted_pieces[get_move_piece(pv_table[0][i])]);
+        }
+        
+        printf("\n");
     }
 	
 	// print best move
@@ -1939,8 +1945,8 @@ void uci()
 		
 		// use fixed depth 3 for all the other modes but fixed depth, e.g. in blitz mode
 		else if (!strncmp(line, "go", 2))
-			// search 5 ply
-			search_position(5);
+			// search 6 ply
+			search_position(6);
 		
 		// parse "quit" command
 		else if(!strncmp(line, "quit", 4))
@@ -1960,14 +1966,6 @@ int main()
 {
     // run engine in UCI mode
     uci();
-    
-    //parse_fen(start_position);
-    //print_board();
-    /*moves move_list[1];
-    generate_moves(move_list);
-    sort_moves_test(move_list);*/
-    
-    //search_position(5);
     
     return 0;
 }
