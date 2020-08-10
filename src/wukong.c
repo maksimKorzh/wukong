@@ -1720,22 +1720,6 @@ int search_position(int depth)
         printf("\n");
     }
 	
-	/* search position with current depth 3
-	    score = negamax_search(-50000, 50000, depth);
-        
-        // output best move
-        printf("info score cp %d depth %d nodes %ld pv ", score, depth, nodes);
-        
-        // print PV line
-        for (int i = 0; i < pv_length[0]; i++)
-        {
-            printf("%s%s%c ", square_to_coords[get_move_source(pv_table[0][i])],
-                                square_to_coords[get_move_target(pv_table[0][i])],
-                                 promoted_pieces[get_move_piece(pv_table[0][i])]);
-        }
-        
-        printf("\n");*/
-	
 	// print best move
     printf("\nbestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
                                 square_to_coords[get_move_target(best_move)],
