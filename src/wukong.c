@@ -1692,6 +1692,11 @@ int search_position(int depth)
     // init nodes count
     nodes = 0;
     
+    // clear PV, killer and history moves
+    memset(pv_table, 0, 16384);  // sizeof(pv_table)
+    memset(killer_moves, 0, 512);  // sizeof(killer_moves)
+    memset(history_moves, 0, 6656);  // sizeof(history_moves)
+    
     // best score
     int score;
     
@@ -1989,7 +1994,7 @@ int main()
 {
     // run engine in UCI mode
     uci();
-    
+	
     return 0;
 }
 
