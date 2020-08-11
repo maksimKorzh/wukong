@@ -178,7 +178,7 @@ const int knight_score[128] =
     -5,   5,  20,  20,  20,  20,   5,  -5,    o, o, o, o, o, o, o, o,
     -5,  10,  20,  30,  30,  20,  10,  -5,    o, o, o, o, o, o, o, o,
     -5,  10,  20,  30,  30,  20,  10,  -5,    o, o, o, o, o, o, o, o,
-    -5,   5,  20,  10,  10,  25,   5,  -5,    o, o, o, o, o, o, o, o,
+    -5,   5,  20,  10,  10,  20,   5,  -5,    o, o, o, o, o, o, o, o,
     -5,   0,   0,   0,   0,   0,   0,  -5,    o, o, o, o, o, o, o, o,
     -5, -10,   0,   0,   0,   0, -10,  -5,    o, o, o, o, o, o, o, o
 };
@@ -1402,9 +1402,6 @@ int history_moves[13][128];
 int pv_table[64][64];
 int pv_length[64];
 
-// init best move
-int best_move = 0;
-
 // half move
 int ply = 0;
 
@@ -1440,16 +1437,45 @@ static inline int score_move(int move)
         else if (pv_table[0][ply] == move)
             // score 20000 ( search it first )
             score = 20000;
-        
+              
         // on history move ( previous alpha's (best score) depth  )
         else
             // score with history depth
             score = history_moves[board[get_move_source(move)]][get_move_target(move)];
             
+            // score with positional piece-square table
+            score += knight_score[get_move_target(move)];
     }
     
     // return move score
     return score;
+}
+
+// sort moves descending
+void sort_moves(moves *move_list, int count)
+{
+    // define current/next and move/score
+    int current_move, next_move, current_score, next_score;
+    
+    // loop over next move
+    for (int next = count + 1; next < move_list->count; next++)                                                   
+    {
+        // init current move/score                                                                                            
+        current_move = move_list->moves[count];                                                                                                                                  
+        current_score = score_move(current_move);
+        
+        // init next move/score
+        next_move = move_list->moves[next];                                                                       
+        next_score = score_move(next_move);
+        
+        // sort descending
+        if (current_score < next_score)                                                                           
+        {                                                                                                         
+            int temp_move = current_move;                                                                         
+            move_list->moves[count] = next_move;                                                                  
+            move_list->moves[next] = temp_move;                                                                  
+        }
+    }
 }
 
 // quiescence search
@@ -1478,30 +1504,8 @@ static inline int quiescence_search(int alpha, int beta, int depth)
     // loop over the generated moves
     for (int count = 0; count < move_list->count; count++)
     {
-        /* move ordering */
-        
-        // define current/next and move/score
-        int current_move, next_move, current_score, next_score;
-        
-        // loop over next move
-        for (int next = count + 1; next < move_list->count; next++)                                                   
-        {
-            // init current move/score                                                                                            
-            current_move = move_list->moves[count];                                                                                                                                  
-            current_score = score_move(current_move);
-            
-            // init next move/score
-            next_move = move_list->moves[next];                                                                       
-            next_score = score_move(next_move);
-            
-            // sort descending
-            if (current_score < next_score)                                                                           
-            {                                                                                                         
-                int temp_move = current_move;                                                                         
-                move_list->moves[count] = next_move;                                                                  
-                move_list->moves[next] = temp_move;                                                                  
-            }
-        }
+        // move ordering
+        sort_moves(move_list, count);
         
         // copy board state
         copy_board();
@@ -1580,30 +1584,8 @@ static inline int negamax_search(int alpha, int beta, int depth)
     // loop over the generated moves
     for (int count = 0; count < move_list->count; count++)
     {   
-        /* move ordering */
-        
-        // define current/next and move/score
-        int current_move, next_move, current_score, next_score;
-        
-        // loop over next move
-        for (int next = count + 1; next < move_list->count; next++)                                                   
-        {
-            // init current move/score                                                                                            
-            current_move = move_list->moves[count];                                                                                                                                  
-            current_score = score_move(current_move);
-            
-            // init next move/score
-            next_move = move_list->moves[next];                                                                       
-            next_score = score_move(next_move);
-            
-            // sort descending
-            if (current_score < next_score)                                                                           
-            {                                                                                                         
-                int temp_move = current_move;                                                                         
-                move_list->moves[count] = next_move;                                                                  
-                move_list->moves[next] = temp_move;                                                                  
-            }
-        }
+        // move ordering
+        sort_moves(move_list, count);
         
         // copy board state
         copy_board();
@@ -1620,7 +1602,7 @@ static inline int negamax_search(int alpha, int beta, int depth)
             // skip illegal move
             continue;
         }
-        
+         
         // increment legal moves
         legal_moves++;
         
@@ -1678,10 +1660,6 @@ static inline int negamax_search(int alpha, int beta, int depth)
             return 0;
     }
     
-    // associate best score with best move
-    if (alpha != old_alpha)
-        best_move = best_so_far;
-    
     // return alpha score
     return alpha;
 }
@@ -1721,9 +1699,9 @@ int search_position(int depth)
     }
 	
 	// print best move
-    printf("\nbestmove %s%s%c\n", square_to_coords[get_move_source(best_move)],
-                                square_to_coords[get_move_target(best_move)],
-                                 promoted_pieces[get_move_piece(best_move)]);
+    printf("\nbestmove %s%s%c\n", square_to_coords[get_move_source(pv_table[0][0])],
+                                square_to_coords[get_move_target(pv_table[0][0])],
+                                 promoted_pieces[get_move_piece(pv_table[0][0])]);
 }
 
 
