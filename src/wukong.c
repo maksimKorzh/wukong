@@ -1547,10 +1547,7 @@ static inline int quiescence_search(int alpha, int beta, int depth)
 
 // negamax search
 static inline int negamax_search(int alpha, int beta, int depth)
-{
-    // update nodes count
-    nodes++;
-    
+{       
     // legal moves
     int legal_moves = 0;
     
@@ -1567,6 +1564,9 @@ static inline int negamax_search(int alpha, int beta, int depth)
     if  (!depth)
         // search for calm position before evaluation
         return quiescence_search(alpha, beta, depth);
+
+    // update nodes count
+    nodes++;
     
     // is king in check?
     int in_check = is_square_attacked(king_square[side], side ^ 1);
