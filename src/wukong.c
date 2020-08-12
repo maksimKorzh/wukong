@@ -29,6 +29,7 @@
 #define start_position "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
 #define tricky_position "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "
 #define killer_position "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1"
+#define cml_position "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 "
 
 // piece encoding
 enum pieces {e, P, N, B, R, Q, K, p, n, b, r, q, k, o};
@@ -1691,8 +1692,8 @@ int search_position(int depth)
         for (int i = 0; i < pv_length[0]; i++)
         {
             printf("%s%s%c ", square_to_coords[get_move_source(pv_table[0][i])],
-                                square_to_coords[get_move_target(pv_table[0][i])],
-                                 promoted_pieces[get_move_piece(pv_table[0][i])]);
+                              square_to_coords[get_move_target(pv_table[0][i])],
+                              promoted_pieces[get_move_piece(pv_table[0][i])]);
         }
         
         printf("\n");
@@ -1700,8 +1701,8 @@ int search_position(int depth)
 	
 	// print best move
     printf("\nbestmove %s%s%c\n", square_to_coords[get_move_source(pv_table[0][0])],
-                                square_to_coords[get_move_target(pv_table[0][0])],
-                                 promoted_pieces[get_move_piece(pv_table[0][0])]);
+                                  square_to_coords[get_move_target(pv_table[0][0])],
+                                  promoted_pieces[get_move_piece(pv_table[0][0])]);
 }
 
 
@@ -1956,7 +1957,7 @@ int main()
 {
     // run engine in UCI mode
     uci();
-	
+		
     return 0;
 }
 
