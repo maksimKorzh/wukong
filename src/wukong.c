@@ -193,7 +193,7 @@ const int bishop_score[128] =
      0,   0,  10,  20,  20,  10,   0,   0,    o, o, o, o, o, o, o, o,
      0,   0,  10,  20,  20,  10,   0,   0,    o, o, o, o, o, o, o, o,
      0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
-     0,  10,   0,   0,   0,   0,  10,   0,    o, o, o, o, o, o, o, o,
+     0,  30,   0,   0,   0,   0,  30,   0,    o, o, o, o, o, o, o, o,
      0,   0, -10,   0,   0, -10,   0,   0,    o, o, o, o, o, o, o, o
 
 };
@@ -1329,18 +1329,35 @@ static inline int evaluate_position()
             // material score evaluation
             score += material_score[piece];
             
-            // positional score evaluation
+            // pieces evaluation
 			switch(piece)
 			{
 				// white pieces
-				case P: score += pawn_score[square]; break;
+				case P: 
+				    // positional score
+				    score += pawn_score[square];
+				    
+				    // double panws penalty
+				    if (board[square - 16] == P)
+				        score -= 100;
+				    
+				    break;
+				        
 				case N: score += knight_score[square]; break;
 				case B: score += bishop_score[square]; break;
 				case R: score += rook_score[square]; break;
 				case K: score += king_score[square]; break;
 				
 				// black pieces
-				case p: score -= pawn_score[mirror_score[square]]; break;
+				case p:
+				    // positional score
+				    score -= pawn_score[mirror_score[square]];
+				    
+				    // double pawns penalty
+				    if (board[square + 16] == p)
+				        score += 100;
+				        
+				    break;
 				case n: score -= knight_score[mirror_score[square]]; break;
 				case b: score -= bishop_score[mirror_score[square]]; break;
 				case r: score -= rook_score[mirror_score[square]]; break;
@@ -1349,7 +1366,7 @@ static inline int evaluate_position()
             
         }
     }
-    
+
     // return positive score for white & negative for black
     return !side ? score : -score;
 }
@@ -1960,7 +1977,7 @@ int main()
 {
     // run engine in UCI mode
     uci();
-		
+    
     return 0;
 }
 
