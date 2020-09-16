@@ -12,6 +12,6 @@ Modular & didactic UCI chess engine written by Code Monkey King
   - iterative deepening
   - fixed depth UCI protocol (plays whatever but fixed depth mode with hardcoded 6 plies)
 
-# limitations
+# Limitations
   - no 3 fold repetition detection
   - no 50 move rule detection
