@@ -13,6 +13,7 @@ https://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&e
   - PV table
   - killer moves/history moves move ordering
   - iterative deepening
+  - material and PST evaluation
   - fixed depth UCI protocol (plays whatever but fixed depth mode with hardcoded 6 plies)
 
 # Limitations
