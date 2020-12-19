@@ -1,6 +1,6 @@
 # Wukong
-Modular & didactic UCI chess engine written by Code Monkey King
-This project is no longer maintained, see Wukong JS instead -
+Modular & didactic UCI chess engine written by Code Monkey King<br>
+This project is no longer maintained, see Wukong JS instead -<br>
 a javascript port of Wukong with UCI support: https://github.com/maksimKorzh/wukongJS
 
 # Strength CCRL 1474 ELO
