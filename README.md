@@ -1,4 +1,4 @@
-# New project
+# This project has been supercede by a new project
 This project is no longer maintained, see Wukong JS instead -<br>
 a javascript port of Wukong with UCI support: https://github.com/maksimKorzh/wukongJS
 
